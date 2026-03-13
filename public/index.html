@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>JHOLARS — Card Game</title>
+  <meta name="description" content="JHOLARS - Play the ultimate multiplayer card game. Bet, bluff, and win!">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@500;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- ============ LANDING ============ -->
+  <section id="screen-landing" class="screen active">
+    <div class="land-bg"><div class="orb orb1"></div><div class="orb orb2"></div><div class="orb orb3"></div></div>
+    <div class="land-wrap">
+      <div class="brand">
+        <div class="brand-suits"><span class="sr">♥</span><span class="sb">♠</span><span class="sr">♦</span><span class="sb">♣</span></div>
+        <h1 class="brand-name">JHOLARS</h1>
+        <p class="brand-sub">THE CARD GAME</p>
+        <div class="brand-tag"><span>BET</span><span class="dot">•</span><span>BLUFF</span><span class="dot">•</span><span>WIN</span></div>
+      </div>
+      <div class="land-btns">
+        <button id="btn-create" class="btn btn-primary btn-xl"><span class="btn-i">＋</span>Create Room</button>
+        <button id="btn-join" class="btn btn-ghost btn-xl"><span class="btn-i">→</span>Join Room</button>
+      </div>
+    </div>
+    <!-- Create Modal -->
+    <div id="m-create" class="modal hidden">
+      <div class="modal-overlay"></div>
+      <div class="modal-card">
+        <div class="modal-head"><h3>Create Room</h3><button class="modal-x" data-close="m-create">×</button></div>
+        <div class="modal-body">
+          <label class="field-label">Your Name</label>
+          <input id="i-cname" class="field" placeholder="Enter name" maxlength="12" autocomplete="off">
+          <label class="field-label">Boot Amount</label>
+          <div class="boot-chips">
+            <button class="boot-chip active" data-b="10">₹10</button>
+            <button class="boot-chip" data-b="20">₹20</button>
+            <button class="boot-chip" data-b="50">₹50</button>
+            <button class="boot-chip" data-b="100">₹100</button>
+          </div>
+          <button id="btn-cc" class="btn btn-primary btn-xl">Create Room</button>
+        </div>
+      </div>
+    </div>
+    <!-- Join Modal -->
+    <div id="m-join" class="modal hidden">
+      <div class="modal-overlay"></div>
+      <div class="modal-card">
+        <div class="modal-head"><h3>Join Room</h3><button class="modal-x" data-close="m-join">×</button></div>
+        <div class="modal-body">
+          <label class="field-label">Your Name</label>
+          <input id="i-jname" class="field" placeholder="Enter name" maxlength="12" autocomplete="off">
+          <label class="field-label">Room Code</label>
+          <input id="i-jcode" class="field field-code" placeholder="• • • • • •" maxlength="6" inputmode="numeric" autocomplete="off">
+          <button id="btn-jc" class="btn btn-primary btn-xl">Join Room</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ LOBBY ============ -->
+  <section id="screen-lobby" class="screen">
+    <div class="lobby-wrap">
+      <div class="lobby-head"><button id="btn-back" class="icon-btn">‹</button><h2>Game Lobby</h2><div></div></div>
+      <div class="room-card">
+        <span class="rc-label">ROOM CODE</span>
+        <div class="rc-row"><span id="lob-code" class="rc-code">------</span><button id="btn-copy" class="icon-btn">📋</button></div>
+        <span class="rc-hint">Share with friends</span>
+      </div>
+      <div id="players-grid" class="players-grid"></div>
+      <div class="lobby-foot">
+        <button id="btn-start" class="btn btn-primary btn-xl hidden">▶ Deal Cards</button>
+        <p id="wait-msg" class="wait-text">Waiting for players…</p>
+      </div>
+    </div>
+    <div class="chat-float">
+      <button id="chat-fab" class="chat-fab-btn">💬<span id="c-badge" class="chat-badge hidden">0</span></button>
+      <div id="chat-panel" class="chat-panel hidden">
+        <div class="chat-head"><span>Chat</span><button id="cp-close" class="modal-x">×</button></div>
+        <div id="chat-msgs" class="chat-msgs"></div>
+        <div class="chat-bar"><input id="i-chat" class="field field-sm" placeholder="Message…" maxlength="200" autocomplete="off"><button id="btn-chat" class="btn btn-primary btn-sm">Send</button></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ GAME TABLE ============ -->
+  <section id="screen-game" class="screen">
+    <div class="game-layout">
+      <!-- Table Area -->
+      <div class="table-zone">
+        <div class="felt" id="felt">
+          <!-- Pot in center -->
+          <div class="pot-center" id="pot-center">
+            <div class="pot-coins" id="pot-coins"></div>
+            <div class="pot-amount">
+              <span class="pot-label">POT</span>
+              <span class="pot-value" id="pot-val">0</span>
+            </div>
+            <div class="pot-glow"></div>
+          </div>
+          <!-- Stake badge -->
+          <div class="stake-badge">STAKE <span id="stake-val">10</span></div>
+          <!-- Seats -->
+          <div id="seats" class="seats"></div>
+        </div>
+      </div>
+
+      <!-- My Cards -->
+      <div class="hand-dock" id="hand-dock">
+        <div class="hand-cards" id="hand-cards"></div>
+        <div class="hand-info">
+          <span class="hi-chips">💰 <span id="hi-chips">1000</span></span>
+          <span id="hi-status" class="hi-badge">BLIND</span>
+        </div>
+      </div>
+
+      <!-- Action Panel -->
+      <div class="action-panel" id="action-panel">
+        <div class="ap-info">
+          <span class="ap-turn" id="ap-turn">Waiting…</span>
+          <span class="ap-cost" id="ap-cost"></span>
+        </div>
+        <!-- Main actions row -->
+        <div class="ap-main">
+          <button id="a-see" class="ap-btn ap-see"><span class="ap-icon">👁</span>See</button>
+          <button id="a-call" class="ap-btn ap-call" disabled><span class="ap-icon">✓</span>Call <span class="ap-sub" id="call-val"></span></button>
+          <button id="a-fold" class="ap-btn ap-fold" disabled><span class="ap-icon">✕</span>Pack</button>
+          <button id="a-show" class="ap-btn ap-show hidden" disabled><span class="ap-icon">🃏</span>Show</button>
+        </div>
+        <!-- Raise section -->
+        <div class="ap-raise" id="ap-raise">
+          <div class="raise-stepper">
+            <button class="step-btn step-minus" id="r-minus">−</button>
+            <div class="step-display">
+              <span class="step-label">RAISE</span>
+              <span class="step-value" id="r-val">20</span>
+            </div>
+            <button class="step-btn step-plus" id="r-plus">+</button>
+          </div>
+          <div class="raise-presets">
+            <button class="preset" data-p="10">10</button>
+            <button class="preset" data-p="20">20</button>
+            <button class="preset" data-p="50">50</button>
+            <button class="preset" data-p="100">100</button>
+          </div>
+          <button id="a-raise" class="btn btn-raise" disabled>Confirm Raise</button>
+        </div>
+      </div>
+
+      <!-- Chip animation layer -->
+      <div class="chip-anim-layer" id="chip-anim"></div>
+    </div>
+  </section>
+
+  <!-- ============ RESULTS ============ -->
+  <section id="screen-results" class="screen">
+    <div class="res-wrap">
+      <div id="confetti" class="confetti-layer"></div>
+      <h2 class="res-title">Round Over</h2>
+      <div class="winner-banner">
+        <div class="wb-glow"></div>
+        <span class="wb-trophy">🏆</span>
+        <div class="wb-info"><span id="w-name" class="wb-name">Player</span><span class="wb-label">WINNER</span><span id="w-pot" class="wb-pot">+0</span></div>
+      </div>
+      <div id="res-list" class="res-list"></div>
+      <div class="res-actions">
+        <button id="btn-again" class="btn btn-primary btn-xl">Play Again</button>
+        <button id="btn-leave" class="btn btn-ghost btn-md">Leave Room</button>
+      </div>
+    </div>
+  </section>
+
+  <div id="toasts" class="toasts"></div>
+  <!-- Bet notification -->
+  <div id="bet-notif" class="bet-notif hidden"></div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="js/animations.js"></script>
+  <script src="js/socket.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
