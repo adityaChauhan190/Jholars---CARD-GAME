@@ -1,6 +1,7 @@
 /**
  * JHOLARS — Main Client App
  * Stake-based betting with flexible raise stepper
+ * Features: Add Coins, Auto Round, Statistics, Game End Summary
  */
 ;(function () {
   'use strict';
@@ -8,12 +9,13 @@
   let room = null, myId = null, myName = '', isHost = false;
   let bootAmt = 10, isSeen = false, myHand = null, unread = 0;
   let lastState = null, raiseAmt = 20;
+  let countdownInterval = null, countdownValue = 20;
 
   const $ = s => document.querySelector(s);
   const $$ = s => document.querySelectorAll(s);
   const COLORS = ['#f5c518','#1e88e5','#43a047','#e53935','#7c4dff','#ec407a','#ff9800'];
 
-  const screens = { landing: $('#screen-landing'), lobby: $('#screen-lobby'), game: $('#screen-game'), results: $('#screen-results') };
+  const screens = { landing: $('#screen-landing'), lobby: $('#screen-lobby'), game: $('#screen-game'), results: $('#screen-results'), stats: $('#screen-stats') };
   function showScreen(n) { Object.values(screens).forEach(s => s.classList.remove('active')); screens[n].classList.add('active'); }
   function toast(m, t = 'info') { const d = document.createElement('div'); d.className = `toast toast-${t}`; d.textContent = m; $('#toasts').appendChild(d); setTimeout(() => d.remove(), 3200); }
   function betNotif(msg) { const el = $('#bet-notif'); el.textContent = msg; el.classList.remove('hidden'); el.style.animation = 'none'; el.offsetHeight; el.style.animation = ''; setTimeout(() => el.classList.add('hidden'), 2200); }
@@ -299,6 +301,60 @@
     catch (e) { toast(e.message, 'error'); }
   };
 
+  // === ADD COINS ===
+  $('#btn-add-coins').onclick = () => { $('#m-addcoins').classList.remove('hidden'); };
+  $$('.coin-opt').forEach(btn => {
+    btn.onclick = async () => {
+      if (!room) return;
+      const amount = parseInt(btn.dataset.coins);
+      try {
+        btn.disabled = true;
+        await GameSocket.addCoins(room.code, amount);
+        Animations.soundCoin();
+        toast(`Added +${amount} coins!`, 'success');
+        $('#m-addcoins').classList.add('hidden');
+      } catch (e) {
+        toast(e.message, 'error');
+      } finally {
+        btn.disabled = false;
+      }
+    };
+  });
+
+  // === COUNTDOWN TIMER ===
+  function startCountdown() {
+    stopCountdown();
+    countdownValue = 20;
+    const cdBar = $('#countdown-bar');
+    const cdSec = $('#cd-seconds');
+    const cdFill = $('#cd-fill');
+    cdBar.classList.remove('hidden');
+    cdSec.textContent = countdownValue;
+    cdFill.style.transition = 'none';
+    cdFill.style.width = '100%';
+
+    // Trigger reflow and animate
+    cdFill.offsetHeight;
+    cdFill.style.transition = 'width 20s linear';
+    cdFill.style.width = '0%';
+
+    countdownInterval = setInterval(() => {
+      countdownValue--;
+      cdSec.textContent = Math.max(0, countdownValue);
+      Animations.soundCountdown();
+      if (countdownValue <= 0) {
+        stopCountdown();
+      }
+    }, 1000);
+  }
+
+  function stopCountdown() {
+    if (countdownInterval) {
+      clearInterval(countdownInterval);
+      countdownInterval = null;
+    }
+  }
+
   // ==== RESULTS ====
   function showResults(data) {
     showScreen('results');
@@ -326,17 +382,61 @@
       let cards = '';
       if (p.hand) { cards = '<div class="r-cards">' + p.hand.map(c => `<div class="r-mc ${c.color}${c.value === 9 ? ' s9' : ''}"><span class="rv">${c.value}</span><span class="rsu">${c.symbol}</span></div>`).join('') + '</div>'; }
       let det = '';
-      if (p.score && !p.isFolded) { det = `<div class="r-det"><span>Sum: ${p.score.total}</span><span>Score: ${p.score.lastDigit}</span>${p.score.holds9 ? '<span>🌟 +0.5</span>' : ''}<span>Bet: ₹${p.totalBet}</span></div>`; }
+      if (p.score && !p.isFolded) { det = `<div class="r-det"><span>Sum: ${p.score.total}</span><span>Score: ${p.score.lastDigit}</span>${p.score.holds9 ? '<span>🌟 +0.5</span>' : ''}<span>Bet: ₹${p.totalBet}</span><span>💰 ${p.chips}</span></div>`; }
       card.innerHTML = h + cards + det;
       list.appendChild(card);
     });
+
+    // Start countdown for next round
+    startCountdown();
   }
 
-  $('#btn-again').onclick = async () => { try { await GameSocket.playAgain(room.code); } catch (e) { toast(e.message, 'error'); } };
-  $('#btn-leave').onclick = () => { GameSocket.leaveRoom(room.code); reset(); showScreen('landing'); };
+  // End Game
+  $('#btn-end-game').onclick = async () => {
+    if (!room) return;
+    try {
+      stopCountdown();
+      await GameSocket.endGame(room.code);
+    } catch (e) { toast(e.message, 'error'); }
+  };
+
+  $('#btn-leave').onclick = () => { stopCountdown(); GameSocket.leaveRoom(room.code); reset(); showScreen('landing'); };
+
+  // ==== STATS SCREEN ====
+  function showStatsScreen(summary) {
+    showScreen('stats');
+    stopCountdown();
+
+    // Sort by profit/loss descending
+    const sorted = [...summary].sort((a, b) => b.profitLoss - a.profitLoss);
+    const tbody = $('#stats-body');
+    tbody.innerHTML = '';
+
+    sorted.forEach((p, idx) => {
+      const tr = document.createElement('tr');
+      tr.className = idx === 0 ? 'stat-row winner' : 'stat-row';
+      tr.style.animationDelay = `${idx * 80}ms`;
+
+      const plClass = p.profitLoss >= 0 ? 'stat-profit' : 'stat-loss';
+      const plSign = p.profitLoss >= 0 ? '+' : '';
+
+      tr.innerHTML = `
+        <td class="stat-rank">${idx === 0 ? '🏆' : idx + 1}</td>
+        <td class="stat-name">${esc(p.name)}</td>
+        <td>${p.roundsPlayed}</td>
+        <td>${p.roundsWon}</td>
+        <td>₹${p.totalAmountBet}</td>
+        <td>₹${p.finalBalance}</td>
+        <td class="${plClass}">${plSign}₹${p.profitLoss}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  $('#btn-stats-leave').onclick = () => { reset(); showScreen('landing'); };
 
   // ==== SOCKET EVENTS ====
-  GameSocket.on('player-joined', d => { if (room) { renderPlayers(d.players, room.hostId); toast(`${d.newPlayer} joined`, 'success'); Animations.soundJoin(); } });
+  GameSocket.on('player-joined', d => { if (room) { renderPlayers(d.players, room.hostId); if (d.newPlayer) toast(`${d.newPlayer} joined`, 'success'); Animations.soundJoin(); } });
   GameSocket.on('player-left', d => { if (room) { room.hostId = d.hostId; isHost = d.hostId === myId; renderPlayers(d.players, d.hostId); toast(`${d.leftPlayer} left`); } });
   GameSocket.on('game-state', st => {
     if (screens.game.classList.contains('active')) {
@@ -355,6 +455,34 @@
     } else { enterGame(); setTimeout(() => updateUI(st), 350); }
   });
   GameSocket.on('results', d => showResults(d));
+
+  // Auto-round events
+  GameSocket.on('auto-round-started', d => {
+    stopCountdown();
+    toast(`Round ${d.roundNumber} starting!`, 'info');
+    myHand = null; isSeen = false; lastState = null; raiseAmt = 20;
+    // enterGame() will be called when game-state arrives
+  });
+
+  GameSocket.on('auto-round-cancelled', d => {
+    stopCountdown();
+    $('#countdown-bar').classList.add('hidden');
+    toast(d.reason || 'Auto round cancelled');
+  });
+
+  // Coins added notification
+  GameSocket.on('coins-added', d => {
+    if (d.playerId !== myId) {
+      toast(`${d.playerName} added +${d.amount} coins`, 'info');
+    }
+  });
+
+  // Game ended — show stats
+  GameSocket.on('game-ended', d => {
+    stopCountdown();
+    showStatsScreen(d.summary);
+  });
+
   GameSocket.on('room-reset', d => { room.hostId = d.hostId; isHost = d.hostId === myId; myHand = null; isSeen = false; lastState = null; raiseAmt = 20; enterLobby({ code: room.code, players: d.players, hostId: d.hostId }); toast('New round'); });
   GameSocket.on('chat-message', d => {
     const div = document.createElement('div'); div.className = 'chat-msg';
@@ -364,7 +492,7 @@
   });
   GameSocket.on('kicked', () => { reset(); showScreen('landing'); toast('You were kicked', 'error'); });
 
-  function reset() { room = null; myHand = null; isHost = false; isSeen = false; unread = 0; lastState = null; raiseAmt = 20; $('#chat-msgs').innerHTML = ''; $('#i-cname').value = ''; $('#i-jname').value = ''; $('#i-jcode').value = ''; $('#chat-panel').classList.add('hidden'); $('#c-badge').classList.add('hidden'); }
+  function reset() { room = null; myHand = null; isHost = false; isSeen = false; unread = 0; lastState = null; raiseAmt = 20; stopCountdown(); $('#chat-msgs').innerHTML = ''; $('#i-cname').value = ''; $('#i-jname').value = ''; $('#i-jcode').value = ''; $('#chat-panel').classList.add('hidden'); $('#c-badge').classList.add('hidden'); }
   function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
   GameSocket.socket.on('connect', () => { myId = GameSocket.getId(); });
 })();

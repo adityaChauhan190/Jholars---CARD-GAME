@@ -167,6 +167,60 @@ body{font-family:var(--f);background:var(--bg);color:var(--tx);min-height:100dvh
 .hi-badge{font-size:.55rem;font-weight:700;letter-spacing:2px;padding:2px 9px;border-radius:100px;text-transform:uppercase}
 .hi-badge.blind{background:rgba(255,255,255,.07);color:var(--t2)}.hi-badge.seen{background:rgba(30,136,229,.12);color:var(--blu)}.hi-badge.folded{background:rgba(239,68,68,.1);color:var(--err)}
 
+/* === ADD COINS BUTTON === */
+.btn-add-coins{
+  background:linear-gradient(135deg,rgba(245,197,24,.12),rgba(255,152,0,.08));
+  border:1px solid rgba(245,197,24,.3);
+  color:var(--g1);
+  font-size:.7rem;
+  font-weight:700;
+  padding:4px 10px;
+  border-radius:100px;
+  cursor:pointer;
+  transition:all .2s;
+  font-family:var(--f);
+  letter-spacing:.5px;
+}
+.btn-add-coins:hover{background:rgba(245,197,24,.18);box-shadow:0 0 12px rgba(245,197,24,.15);transform:scale(1.05)}
+.btn-add-coins:active{transform:scale(.95)}
+
+/* === ADD COINS MODAL === */
+.add-coins-desc{color:var(--t2);font-size:.82rem;margin-bottom:16px;text-align:center}
+.add-coins-btns{display:flex;gap:10px;justify-content:center}
+.coin-opt{
+  flex:1;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:6px;
+  padding:18px 12px;
+  border:1px solid var(--bd2);
+  border-radius:var(--rl);
+  background:linear-gradient(145deg,rgba(245,197,24,.04),rgba(255,152,0,.02));
+  cursor:pointer;
+  transition:all .25s;
+  position:relative;
+  overflow:hidden;
+}
+.coin-opt::before{
+  content:'';
+  position:absolute;
+  inset:0;
+  background:radial-gradient(circle at 50% 120%,rgba(245,197,24,.08),transparent 70%);
+  opacity:0;
+  transition:opacity .3s;
+}
+.coin-opt:hover{
+  border-color:var(--g1);
+  transform:translateY(-3px);
+  box-shadow:0 6px 20px rgba(245,197,24,.12);
+}
+.coin-opt:hover::before{opacity:1}
+.coin-opt:active{transform:scale(.96)}
+.coin-opt:disabled{opacity:.4;cursor:not-allowed;transform:none}
+.coin-amt{font-family:var(--m);font-size:1.3rem;font-weight:700;color:var(--g1);position:relative;z-index:1}
+.coin-icon{font-size:1.4rem;position:relative;z-index:1}
+
 /* === ACTION PANEL === */
 .action-panel{width:100%;background:rgba(5,9,16,.94);backdrop-filter:blur(16px);border-top:1px solid var(--bd);padding:8px 14px calc(env(safe-area-inset-bottom,6px) + 6px);z-index:20;display:flex;flex-direction:column;gap:6px;flex-shrink:0}
 .ap-info{display:flex;align-items:center;justify-content:space-between}
@@ -199,8 +253,9 @@ body{font-family:var(--f);background:var(--bg);color:var(--tx);min-height:100dvh
 .preset:active{transform:scale(.95)}
 .preset.active{border-color:var(--g1);color:var(--g1);background:rgba(245,197,24,.1)}
 
-.btn-raise{background:linear-gradient(135deg,var(--g2),#e67e00);color:#1a1a2e;font-weight:700;padding:10px;border-radius:var(--rs);font-size:.82rem}
+.btn-raise{background:linear-gradient(135deg,var(--g2),#e67e00);color:#1a1a2e;font-weight:700;padding:10px;border-radius:var(--rs);font-size:.82rem;border:none;cursor:pointer;transition:all .2s}
 .btn-raise:hover:not(:disabled){box-shadow:0 4px 16px rgba(255,152,0,.3)}
+.btn-raise:disabled{opacity:.28;cursor:not-allowed}
 
 /* Chip animation */
 .chip-anim-layer{position:fixed;inset:0;pointer-events:none;z-index:30;overflow:hidden}
@@ -234,8 +289,139 @@ body{font-family:var(--f);background:var(--bg);color:var(--tx);min-height:100dvh
 .r-mc.red{color:var(--cr)}.r-mc.black{color:var(--cb)}
 .r-mc .rv{font-size:.75rem;font-weight:800;line-height:1}.r-mc .rsu{font-size:.7rem}
 .r-mc.s9{border:2px solid var(--g1);box-shadow:0 0 6px var(--gg)}
-.r-det{display:flex;gap:10px;justify-content:center;font-size:.62rem;color:var(--t2)}
+.r-det{display:flex;gap:10px;justify-content:center;font-size:.62rem;color:var(--t2);flex-wrap:wrap}
 .res-actions{display:flex;flex-direction:column;gap:7px;width:100%;margin-top:6px}
+.btn-leave-sm{font-size:.78rem;padding:10px 16px}
+
+/* === COUNTDOWN BAR === */
+.countdown-bar{
+  width:100%;
+  padding:10px 16px;
+  background:rgba(245,197,24,.05);
+  border:1px solid rgba(245,197,24,.15);
+  border-radius:var(--r);
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+  animation:fadeUp .3s ease;
+}
+.countdown-bar.hidden{display:none!important}
+.cd-text{
+  font-size:.78rem;
+  font-weight:600;
+  color:var(--g1);
+  text-align:center;
+  letter-spacing:.5px;
+}
+.cd-text span{
+  font-family:var(--m);
+  font-weight:800;
+  font-size:1rem;
+}
+.cd-progress{
+  width:100%;
+  height:4px;
+  background:rgba(255,255,255,.06);
+  border-radius:100px;
+  overflow:hidden;
+}
+.cd-fill{
+  height:100%;
+  width:100%;
+  background:linear-gradient(90deg,var(--g1),var(--g2));
+  border-radius:100px;
+  box-shadow:0 0 8px rgba(245,197,24,.3);
+}
+
+/* === GAME END STATS SCREEN === */
+.stats-wrap{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:20px;
+  width:100%;
+  max-width:560px;
+  margin:0 auto;
+  padding:24px 16px;
+  min-height:100dvh;
+}
+.stats-header{
+  text-align:center;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:4px;
+}
+.stats-trophy{
+  font-size:3rem;
+  animation:bob 3s ease-in-out infinite;
+}
+.stats-title{
+  font-family:var(--f2);
+  font-size:1.8rem;
+  font-weight:700;
+  background:linear-gradient(135deg,var(--g1),var(--g2));
+  -webkit-background-clip:text;
+  -webkit-text-fill-color:transparent;
+  background-clip:text;
+}
+.stats-sub{
+  font-size:.75rem;
+  font-weight:600;
+  letter-spacing:3px;
+  text-transform:uppercase;
+  color:var(--t2);
+}
+
+/* Stats Table */
+.stats-table-wrap{
+  width:100%;
+  overflow-x:auto;
+  -webkit-overflow-scrolling:touch;
+  border-radius:var(--rl);
+  border:1px solid var(--bd2);
+  background:rgba(255,255,255,.02);
+}
+.stats-table{
+  width:100%;
+  border-collapse:collapse;
+  font-size:.75rem;
+}
+.stats-table thead{
+  background:rgba(245,197,24,.06);
+  border-bottom:1px solid var(--bd2);
+}
+.stats-table th{
+  padding:10px 8px;
+  font-size:.58rem;
+  font-weight:700;
+  letter-spacing:1.5px;
+  text-transform:uppercase;
+  color:var(--t2);
+  text-align:center;
+  white-space:nowrap;
+}
+.stats-table td{
+  padding:10px 8px;
+  text-align:center;
+  font-family:var(--m);
+  font-size:.72rem;
+  font-weight:500;
+  color:var(--tx);
+  border-bottom:1px solid var(--bd);
+}
+.stat-row{animation:fadeUp .4s ease forwards;opacity:0}
+.stat-row.winner{background:rgba(245,197,24,.04)}
+.stat-row.winner td{color:var(--g1);font-weight:700}
+.stat-rank{font-weight:800;font-size:.8rem}
+.stat-name{font-family:var(--f)!important;font-weight:600!important;text-align:left!important;white-space:nowrap;max-width:80px;overflow:hidden;text-overflow:ellipsis}
+.stat-profit{color:var(--ok)!important;font-weight:700!important}
+.stat-loss{color:var(--err)!important;font-weight:700!important}
+
+.stats-actions{
+  width:100%;
+  margin-top:8px;
+}
 
 /* Confetti */
 .confetti-layer{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:50}
@@ -261,10 +447,13 @@ body{font-family:var(--f);background:var(--bg);color:var(--tx);min-height:100dvh
   .felt{width:min(70vw,42vh);height:min(70vw,42vh)}
   .gc{width:90px}.seat-av{width:42px;height:42px;font-size:.9rem}
   .players-grid{grid-template-columns:1fr 1fr 1fr}
+  .stats-table{font-size:.8rem}
+  .stats-table td{padding:12px 10px}
 }
 @media(min-width:1024px){
   .land-btns{flex-direction:row;justify-content:center}.btn-xl{min-width:220px;width:auto}
   .felt{width:min(50vw,46vh);height:min(50vw,46vh)}
   .action-panel{max-width:540px;margin:0 auto;border-radius:var(--rl) var(--rl) 0 0}
+  .stats-wrap{max-width:700px}
 }
 ::-webkit-scrollbar{width:3px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:rgba(255,255,255,.08);border-radius:100px}

@@ -1,5 +1,5 @@
 /**
- * 29 Sum Card Game — Server
+ * 29 Sum Card Game — Server (Fair Edition)
  * 
  * STAKE-BASED BETTING:
  *   stake = what a blind player pays (starts at boot amount, e.g. 10)
@@ -10,15 +10,29 @@
  *   When seen raises to X → new stake = X / 2
  *   
  *   Show costs: 2× stake (seen rate), only with 2 players left
+ * 
+ * FAIRNESS:
+ *   - Cryptographic shuffle (crypto.randomInt) for cards
+ *   - Random hand assignment (shuffled deal)
+ *   - Random turn order each round (shuffled activePlayers)
+ *   - Random starting player each round
+ *   - Random tie-breaking for identical hands
+ * 
+ * FEATURES:
+ *   - Auto round transition after 20 seconds
+ *   - Per-player statistics tracking
+ *   - Add coins support
+ *   - Game-end leaderboard summary
  */
 
+const crypto = require('crypto');
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const path = require('path');
 
-const { createRoom, joinRoom, leaveRoom, getRoom, getRoomByPlayerId, resetRoom, getCurrentTurnPlayer, advanceTurn } = require('./game/room');
-const { deal } = require('./game/deck');
+const { createRoom, joinRoom, leaveRoom, getRoom, getRoomByPlayerId, resetRoom, getCurrentTurnPlayer, advanceTurn, updatePlayerStats, addCoins, getGameSummary, deleteRoom } = require('./game/room');
+const { deal, shuffle } = require('./game/deck');
 const { calculateScore, rankPlayers } = require('./game/scoring');
 
 const app = express();
@@ -48,16 +62,90 @@ function broadcastGameState(room) {
         id: pl.id, name: pl.name, chips: pl.chips,
         isSeen: pl.isSeen, isFolded: pl.isFolded,
         totalBet: pl.totalBet,
-        isActive: room.activePlayers.includes(pl.id)
+        isActive: room.activePlayers.includes(pl.id),
+        stats: pl.stats
       })),
       myHand: p.isSeen ? p.hand : null,
       isSeen: p.isSeen,
       isFolded: p.isFolded,
       isMyTurn: turnPlayer && turnPlayer.id === p.id && !p.isFolded,
       activePlayers: room.activePlayers.length,
-      state: room.state
+      state: room.state,
+      roundNumber: room.roundNumber
     });
   });
+}
+
+/**
+ * Emit results and schedule auto-round after 20 seconds.
+ */
+function emitResultsAndAutoRound(room, code, results) {
+  io.to(code).emit('results', results);
+
+  // Schedule auto round after 20 seconds
+  if (room.autoRoundTimer) clearTimeout(room.autoRoundTimer);
+  room.autoRoundTimer = setTimeout(() => {
+    room.autoRoundTimer = null;
+    // Only auto-start if room still exists and has >= 2 players
+    const r = getRoom(code);
+    if (!r || r.players.length < 2) return;
+    autoStartRound(r, code);
+  }, 20000);
+}
+
+/**
+ * Auto-start a new round.
+ */
+function autoStartRound(room, code) {
+  // Reset room state
+  room.state = 'waiting';
+  room.pot = 0;
+  room.currentBet = room.bootAmount;
+  room.currentTurnIndex = 0;
+  room.activePlayers = [];
+
+  room.players.forEach(p => {
+    p.hand = null;
+    p.score = null;
+    p.rank = null;
+    p.isSeen = false;
+    p.isFolded = false;
+    p.totalBet = 0;
+  });
+
+  room.roundNumber++;
+
+  // Check all players have enough chips for boot
+  const canPlay = room.players.filter(p => p.chips >= room.bootAmount);
+  if (canPlay.length < 2) {
+    io.to(code).emit('auto-round-cancelled', { reason: 'Not enough players with sufficient coins' });
+    io.to(code).emit('room-reset', { players: sanitizePlayers(room.players), hostId: room.hostId });
+    return;
+  }
+
+  // Deal & start
+  const hands = deal(room.players.length);
+  room.state = 'playing';
+  room.pot = 0;
+  room.stake = room.bootAmount;
+  room.activePlayers = [];
+
+  room.players.forEach((p, i) => {
+    p.hand = hands[i]; p.score = calculateScore(hands[i]);
+    p.isSeen = false; p.isFolded = false;
+    p.totalBet = room.bootAmount;
+    p.chips -= room.bootAmount;
+    room.pot += room.bootAmount;
+    room.activePlayers.push(p.id);
+  });
+
+  // Shuffle turn order so no player benefits from join position
+  room.activePlayers = shuffle(room.activePlayers);
+  // Random starting player
+  room.currentTurnIndex = crypto.randomInt(0, room.activePlayers.length);
+  
+  io.to(code).emit('auto-round-started', { roundNumber: room.roundNumber });
+  broadcastGameState(room);
 }
 
 function checkAutoWin(room) {
@@ -66,15 +154,23 @@ function checkAutoWin(room) {
     if (winner) {
       winner.chips += room.pot;
       room.state = 'results';
-      io.to(room.code).emit('results', {
+
+      // Update stats
+      updatePlayerStats(room, winner.id);
+
+      const results = {
         results: room.players.map(p => ({
           id: p.id, name: p.name, hand: p.hand,
           score: p.score || calculateScore(p.hand),
-          isFolded: p.isFolded, chips: p.chips, totalBet: p.totalBet
+          isFolded: p.isFolded, chips: p.chips, totalBet: p.totalBet,
+          stats: p.stats
         })),
         winnerId: winner.id, winnerName: winner.name,
-        pot: room.pot, winType: 'fold'
-      });
+        pot: room.pot, winType: 'fold',
+        roundNumber: room.roundNumber
+      };
+
+      emitResultsAndAutoRound(room, room.code, results);
     }
     return true;
   }
@@ -124,7 +220,10 @@ io.on('connection', (socket) => {
       room.activePlayers.push(p.id);
     });
 
-    room.currentTurnIndex = room.activePlayers.length > 1 ? 1 : 0;
+    // Shuffle turn order so no player benefits from join position
+    room.activePlayers = shuffle(room.activePlayers);
+    // Random starting player
+    room.currentTurnIndex = crypto.randomInt(0, room.activePlayers.length);
     cb({ success: true });
     broadcastGameState(room);
   });
@@ -218,15 +317,22 @@ io.on('connection', (socket) => {
       if (p) p.rank = rp.rank;
     });
 
-    io.to(code).emit('results', {
+    // Update stats
+    updatePlayerStats(room, ranked[0].id);
+
+    const results = {
       results: room.players.map(p => ({
         id: p.id, name: p.name, hand: p.hand,
         score: p.score || calculateScore(p.hand),
-        rank: p.rank, isFolded: p.isFolded, chips: p.chips, totalBet: p.totalBet
+        rank: p.rank, isFolded: p.isFolded, chips: p.chips, totalBet: p.totalBet,
+        stats: p.stats
       })),
       winnerId: ranked[0].id, winnerName: ranked[0].name,
-      pot: room.pot, winType: 'showdown'
-    });
+      pot: room.pot, winType: 'showdown',
+      roundNumber: room.roundNumber
+    };
+
+    emitResultsAndAutoRound(room, code, results);
     cb({ success: true });
   });
 
@@ -235,6 +341,61 @@ io.on('connection', (socket) => {
     if (!room) return cb({ success: false, error: 'Room not found' });
     io.to(code).emit('room-reset', { players: sanitizePlayers(room.players), hostId: room.hostId });
     cb({ success: true });
+  });
+
+  // ADD COINS
+  socket.on('add-coins', ({ code, amount }, cb) => {
+    try {
+      const player = addCoins(code, socket.id, parseInt(amount));
+      cb({ success: true, chips: player.chips });
+      // Broadcast updated player info
+      const room = getRoom(code);
+      if (room) {
+        io.to(code).emit('coins-added', {
+          playerId: socket.id,
+          playerName: player.name,
+          amount: parseInt(amount),
+          newBalance: player.chips
+        });
+        // If in game, broadcast updated state
+        if (room.state === 'playing') {
+          broadcastGameState(room);
+        } else {
+          io.to(code).emit('player-joined', { players: sanitizePlayers(room.players), newPlayer: '' });
+        }
+      }
+    } catch (e) { cb({ success: false, error: e.message }); }
+  });
+
+  // CANCEL AUTO ROUND (host only)
+  socket.on('cancel-auto-round', (code, cb) => {
+    const room = getRoom(code);
+    if (!room) return cb({ success: false, error: 'Room not found' });
+    if (room.autoRoundTimer) {
+      clearTimeout(room.autoRoundTimer);
+      room.autoRoundTimer = null;
+    }
+    io.to(code).emit('auto-round-cancelled', { reason: 'Host cancelled' });
+    cb({ success: true });
+  });
+
+  // END GAME — show final leaderboard
+  socket.on('end-game', (code, cb) => {
+    const room = getRoom(code);
+    if (!room) return cb({ success: false, error: 'Room not found' });
+
+    // Clear any pending auto-round
+    if (room.autoRoundTimer) {
+      clearTimeout(room.autoRoundTimer);
+      room.autoRoundTimer = null;
+    }
+
+    const summary = getGameSummary(room);
+    io.to(code).emit('game-ended', { summary, roomCode: code });
+    cb({ success: true });
+
+    // Clean up room after a short delay so clients receive the event
+    setTimeout(() => deleteRoom(code), 2000);
   });
 
   socket.on('chat-message', ({ code, message }) => {
@@ -281,7 +442,7 @@ function sanitize(room) {
   return { code: room.code, hostId: room.hostId, state: room.state, bootAmount: room.bootAmount, players: sanitizePlayers(room.players) };
 }
 function sanitizePlayers(players) {
-  return players.map(p => ({ id: p.id, name: p.name, chips: p.chips }));
+  return players.map(p => ({ id: p.id, name: p.name, chips: p.chips, stats: p.stats }));
 }
 
 server.listen(PORT, () => {

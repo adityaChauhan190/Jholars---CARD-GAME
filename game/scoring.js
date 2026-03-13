@@ -1,5 +1,5 @@
 /**
- * Scoring Module for 29 Sum Card Game
+ * Scoring Module for 29 Sum Card Game — Fair Tie-Breaking
  * 
  * Scoring rules:
  *   1. Sum all 3 card values
@@ -7,7 +7,10 @@
  *   3. Trial (three of a kind) beats all normal hands; higher trial wins
  *   4. If player holds the unique 9 card, they get +0.5 bonus on finalScore
  *   5. Tiebreakers: trial > finalScore > 9-card bonus > raw total > highest individual card
+ *   6. If ALL tiebreakers are identical → random coin flip (no positional bias)
  */
+
+const crypto = require('crypto');
 
 function isTrial(hand) {
   return hand[0].value === hand[1].value && hand[1].value === hand[2].value;
@@ -42,6 +45,10 @@ function calculateScore(hand) {
  * Rank players from best to worst.
  * Each player object: { id, name, hand, score (from calculateScore) }
  * Returns a sorted copy with `rank` field added.
+ * 
+ * FAIRNESS: When two players are perfectly tied on all criteria,
+ * a cryptographically random coin flip decides the order — no player
+ * benefits from their position in the array.
  */
 function rankPlayers(players) {
   const sorted = [...players].sort((a, b) => {
@@ -68,10 +75,15 @@ function rankPlayers(players) {
     }
 
     // 5. Higher individual card
-    return sb.highestCard - sa.highestCard;
+    if (sb.highestCard !== sa.highestCard) {
+      return sb.highestCard - sa.highestCard;
+    }
+
+    // 6. PERFECT TIE — random coin flip (no positional bias)
+    return crypto.randomInt(0, 2) === 0 ? -1 : 1;
   });
 
-  // Assign ranks (1-based). Ties get same rank.
+  // Assign ranks (1-based). True ties (same stats) still get same rank number.
   sorted.forEach((player, idx) => {
     if (idx === 0) {
       player.rank = 1;

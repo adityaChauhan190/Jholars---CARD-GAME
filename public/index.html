@@ -112,8 +112,9 @@
       <div class="hand-dock" id="hand-dock">
         <div class="hand-cards" id="hand-cards"></div>
         <div class="hand-info">
-          <span class="hi-chips">💰 <span id="hi-chips">1000</span></span>
+          <span class="hi-chips">💰 <span id="hi-chips">100</span></span>
           <span id="hi-status" class="hi-badge">BLIND</span>
+          <button id="btn-add-coins" class="btn-add-coins" title="Add Coins">+ 🪙</button>
         </div>
       </div>
 
@@ -153,6 +154,22 @@
       <!-- Chip animation layer -->
       <div class="chip-anim-layer" id="chip-anim"></div>
     </div>
+
+    <!-- Add Coins Modal -->
+    <div id="m-addcoins" class="modal hidden">
+      <div class="modal-overlay"></div>
+      <div class="modal-card">
+        <div class="modal-head"><h3>🪙 Add Coins</h3><button class="modal-x" data-close="m-addcoins">×</button></div>
+        <div class="modal-body">
+          <p class="add-coins-desc">Select amount to add to your balance</p>
+          <div class="add-coins-btns">
+            <button class="coin-opt" data-coins="50"><span class="coin-amt">+50</span><span class="coin-icon">🪙</span></button>
+            <button class="coin-opt" data-coins="100"><span class="coin-amt">+100</span><span class="coin-icon">🪙</span></button>
+            <button class="coin-opt" data-coins="200"><span class="coin-amt">+200</span><span class="coin-icon">🪙</span></button>
+          </div>
+        </div>
+      </div>
+    </div>
   </section>
 
   <!-- ============ RESULTS ============ -->
@@ -166,9 +183,44 @@
         <div class="wb-info"><span id="w-name" class="wb-name">Player</span><span class="wb-label">WINNER</span><span id="w-pot" class="wb-pot">+0</span></div>
       </div>
       <div id="res-list" class="res-list"></div>
+      <!-- Countdown Timer -->
+      <div id="countdown-bar" class="countdown-bar">
+        <div class="cd-text">Next round in <span id="cd-seconds">4</span>s</div>
+        <div class="cd-progress"><div class="cd-fill" id="cd-fill"></div></div>
+      </div>
       <div class="res-actions">
-        <button id="btn-again" class="btn btn-primary btn-xl">Play Again</button>
-        <button id="btn-leave" class="btn btn-ghost btn-md">Leave Room</button>
+        <button id="btn-end-game" class="btn btn-ghost btn-md">🏁 End Game</button>
+        <button id="btn-leave" class="btn btn-ghost btn-md btn-leave-sm">Leave Room</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ GAME END STATS ============ -->
+  <section id="screen-stats" class="screen">
+    <div class="stats-wrap">
+      <div class="stats-header">
+        <span class="stats-trophy">🏆</span>
+        <h2 class="stats-title">Game Over</h2>
+        <p class="stats-sub">Final Leaderboard</p>
+      </div>
+      <div class="stats-table-wrap">
+        <table class="stats-table" id="stats-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Player</th>
+              <th>Rounds</th>
+              <th>Won</th>
+              <th>Bet</th>
+              <th>Balance</th>
+              <th>P/L</th>
+            </tr>
+          </thead>
+          <tbody id="stats-body"></tbody>
+        </table>
+      </div>
+      <div class="stats-actions">
+        <button id="btn-stats-leave" class="btn btn-primary btn-xl">Back to Home</button>
       </div>
     </div>
   </section>

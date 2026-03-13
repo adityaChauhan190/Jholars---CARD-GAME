@@ -1,12 +1,12 @@
 /**
  * Room Management Module — Betting Version
  * 
- * Handles rooms, players, betting state, and turn management.
+ * Handles rooms, players, betting state, turn management, and statistics.
  */
 
 const rooms = new Map();
 
-const DEFAULT_BUY_IN = 1000;
+const DEFAULT_BUY_IN = 100;
 const MIN_BET = 10;
 
 function generateRoomCode() {
@@ -32,7 +32,8 @@ function createRoom(hostId, hostName, bootAmount = MIN_BET) {
     ],
     activePlayers: [], // ids of players still in the round
     chat: [],
-    roundNumber: 0
+    roundNumber: 0,
+    autoRoundTimer: null // timer for auto-starting next round
   };
   rooms.set(code, room);
   return room;
@@ -48,7 +49,13 @@ function createPlayer(id, name) {
     rank: null,
     isSeen: false,
     isFolded: false,
-    totalBet: 0
+    totalBet: 0,
+    stats: {
+      initialBalance: DEFAULT_BUY_IN,
+      roundsPlayed: 0,
+      roundsWon: 0,
+      totalAmountBet: 0
+    }
   };
 }
 
@@ -71,6 +78,7 @@ function leaveRoom(code, playerId) {
   room.activePlayers = room.activePlayers.filter(id => id !== playerId);
 
   if (room.players.length === 0) {
+    if (room.autoRoundTimer) clearTimeout(room.autoRoundTimer);
     rooms.delete(code);
     return null;
   }
@@ -99,6 +107,12 @@ function resetRoom(code) {
   const room = rooms.get(code);
   if (!room) return null;
 
+  // Clear any auto-round timer
+  if (room.autoRoundTimer) {
+    clearTimeout(room.autoRoundTimer);
+    room.autoRoundTimer = null;
+  }
+
   room.state = 'waiting';
   room.pot = 0;
   room.currentBet = room.bootAmount;
@@ -106,6 +120,7 @@ function resetRoom(code) {
   room.activePlayers = [];
   room.roundNumber++;
 
+  // Keep chips & stats persistent, reset round state
   room.players.forEach(p => {
     p.hand = null;
     p.score = null;
@@ -118,7 +133,59 @@ function resetRoom(code) {
   return room;
 }
 
+/**
+ * Update player stats at end of a round.
+ * Called before emitting results.
+ */
+function updatePlayerStats(room, winnerId) {
+  room.players.forEach(p => {
+    // Every non-spectator player played this round
+    if (room.activePlayers.includes(p.id) || p.isFolded) {
+      p.stats.roundsPlayed++;
+      p.stats.totalAmountBet += p.totalBet;
+    }
+    if (p.id === winnerId) {
+      p.stats.roundsWon++;
+    }
+  });
+}
+
+/**
+ * Add coins to a player's balance.
+ */
+function addCoins(code, playerId, amount) {
+  const room = rooms.get(code);
+  if (!room) throw new Error('Room not found');
+  const player = room.players.find(p => p.id === playerId);
+  if (!player) throw new Error('Player not found');
+  
+  const validAmounts = [50, 100, 200];
+  if (!validAmounts.includes(amount)) throw new Error('Invalid amount');
+
+  player.chips += amount;
+  player.stats.initialBalance += amount;
+  return player;
+}
+
+/**
+ * Get game-end summary stats for all players.
+ */
+function getGameSummary(room) {
+  return room.players.map(p => ({
+    id: p.id,
+    name: p.name,
+    roundsPlayed: p.stats.roundsPlayed,
+    roundsWon: p.stats.roundsWon,
+    totalAmountBet: p.stats.totalAmountBet,
+    initialBalance: p.stats.initialBalance,
+    finalBalance: p.chips,
+    profitLoss: p.chips - p.stats.initialBalance
+  }));
+}
+
 function deleteRoom(code) {
+  const room = rooms.get(code);
+  if (room && room.autoRoundTimer) clearTimeout(room.autoRoundTimer);
   rooms.delete(code);
 }
 
@@ -143,6 +210,9 @@ module.exports = {
   deleteRoom,
   getCurrentTurnPlayer,
   advanceTurn,
+  updatePlayerStats,
+  addCoins,
+  getGameSummary,
   rooms,
   DEFAULT_BUY_IN,
   MIN_BET

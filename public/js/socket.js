@@ -1,5 +1,5 @@
 /**
- * Socket.io Client — Betting Version
+ * Socket.io Client — Betting Version with Coins & Stats
  */
 const GameSocket = (() => {
   const socket = io();
@@ -18,6 +18,9 @@ const GameSocket = (() => {
     fold: code => emit('fold', code),
     show: code => emit('show', code),
     playAgain: code => emit('play-again', code),
+    addCoins: (code, amount) => emit('add-coins', { code, amount }),
+    cancelAutoRound: code => emit('cancel-auto-round', code),
+    endGame: code => emit('end-game', code),
     leaveRoom: code => socket.emit('leave-room', code),
     sendChat: (code, msg) => socket.emit('chat-message', { code, message: msg }),
     kickPlayer: (code, pid) => emit('kick-player', { code, playerId: pid }),

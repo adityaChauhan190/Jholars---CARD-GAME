@@ -1,6 +1,6 @@
 /**
  * Animations Module
- * Card flip, deal, confetti, and sound effects
+ * Card flip, deal, confetti, sound effects, and coin animations
  */
 
 const Animations = (() => {
@@ -104,8 +104,41 @@ const Animations = (() => {
     setTimeout(() => playTone(900, 0.1, 'sine', 0.06), 100);
   }
 
+  function soundCoin() {
+    playTone(1400, 0.06, 'sine', 0.08);
+    setTimeout(() => playTone(1800, 0.08, 'sine', 0.06), 60);
+  }
+
+  function soundCountdown() {
+    playTone(440, 0.08, 'square', 0.04);
+  }
+
+  // ---- Fly Chips to Winner ----
+  function flyChipsToWinner(winnerEl, count = 5) {
+    const layer = document.getElementById('chip-anim');
+    const potEl = document.getElementById('pot-center');
+    if (!winnerEl || !potEl || !layer) return;
+    const from = potEl.getBoundingClientRect();
+    const to = winnerEl.getBoundingClientRect();
+    for (let i = 0; i < count; i++) {
+      const chip = document.createElement('div');
+      chip.className = 'fly-chip';
+      chip.style.left = (from.left + from.width / 2 - 7) + 'px';
+      chip.style.top = (from.top + from.height / 2 - 7) + 'px';
+      chip.style.transition = `all ${0.4 + i * 0.08}s cubic-bezier(.2,.8,.3,1)`;
+      layer.appendChild(chip);
+      requestAnimationFrame(() => {
+        chip.style.left = (to.left + to.width / 2 - 7 + (Math.random() - .5) * 16) + 'px';
+        chip.style.top = (to.top + to.height / 2 - 7) + 'px';
+        chip.style.opacity = '0';
+      });
+      setTimeout(() => chip.remove(), 700);
+    }
+  }
+
   return {
     flipCard, flipAllCards, dealCards, showConfetti,
-    shake, soundDeal, soundFlip, soundWin, soundError, soundJoin
+    shake, soundDeal, soundFlip, soundWin, soundError, soundJoin,
+    soundCoin, soundCountdown, flyChipsToWinner
   };
 })();
