@@ -19,7 +19,7 @@ const GameSocket = (() => {
     show: code => emit('show', code),
     playAgain: code => emit('play-again', code),
     addCoins: (code, amount) => emit('add-coins', { code, amount }),
-    cancelAutoRound: code => emit('cancel-auto-round', code),
+    startNextRound: code => emit('start-next-round', code),
     endGame: code => emit('end-game', code),
     leaveRoom: code => socket.emit('leave-room', code),
     sendChat: (code, msg) => socket.emit('chat-message', { code, message: msg }),

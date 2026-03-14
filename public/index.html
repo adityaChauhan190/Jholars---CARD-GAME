@@ -1,25 +1,35 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>JHOLARS — Card Game</title>
   <meta name="description" content="JHOLARS - Play the ultimate multiplayer card game. Bet, bluff, and win!">
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@500;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@500;700&family=JetBrains+Mono:wght@500;700&display=swap"
+    rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
 </head>
+
 <body>
 
   <!-- ============ LANDING ============ -->
   <section id="screen-landing" class="screen active">
-    <div class="land-bg"><div class="orb orb1"></div><div class="orb orb2"></div><div class="orb orb3"></div></div>
+    <div class="land-bg">
+      <div class="orb orb1"></div>
+      <div class="orb orb2"></div>
+      <div class="orb orb3"></div>
+    </div>
     <div class="land-wrap">
       <div class="brand">
-        <div class="brand-suits"><span class="sr">♥</span><span class="sb">♠</span><span class="sr">♦</span><span class="sb">♣</span></div>
+        <div class="brand-suits"><span class="sr">♥</span><span class="sb">♠</span><span class="sr">♦</span><span
+            class="sb">♣</span></div>
         <h1 class="brand-name">JHOLARS</h1>
         <p class="brand-sub">THE CARD GAME</p>
-        <div class="brand-tag"><span>BET</span><span class="dot">•</span><span>BLUFF</span><span class="dot">•</span><span>WIN</span></div>
+        <div class="brand-tag"><span>BET</span><span class="dot">•</span><span>BLUFF</span><span
+            class="dot">•</span><span>WIN</span></div>
       </div>
       <div class="land-btns">
         <button id="btn-create" class="btn btn-primary btn-xl"><span class="btn-i">＋</span>Create Room</button>
@@ -30,7 +40,9 @@
     <div id="m-create" class="modal hidden">
       <div class="modal-overlay"></div>
       <div class="modal-card">
-        <div class="modal-head"><h3>Create Room</h3><button class="modal-x" data-close="m-create">×</button></div>
+        <div class="modal-head">
+          <h3>Create Room</h3><button class="modal-x" data-close="m-create">×</button>
+        </div>
         <div class="modal-body">
           <label class="field-label">Your Name</label>
           <input id="i-cname" class="field" placeholder="Enter name" maxlength="12" autocomplete="off">
@@ -49,12 +61,15 @@
     <div id="m-join" class="modal hidden">
       <div class="modal-overlay"></div>
       <div class="modal-card">
-        <div class="modal-head"><h3>Join Room</h3><button class="modal-x" data-close="m-join">×</button></div>
+        <div class="modal-head">
+          <h3>Join Room</h3><button class="modal-x" data-close="m-join">×</button>
+        </div>
         <div class="modal-body">
           <label class="field-label">Your Name</label>
           <input id="i-jname" class="field" placeholder="Enter name" maxlength="12" autocomplete="off">
           <label class="field-label">Room Code</label>
-          <input id="i-jcode" class="field field-code" placeholder="• • • • • •" maxlength="6" inputmode="numeric" autocomplete="off">
+          <input id="i-jcode" class="field field-code" placeholder="• • • • • •" maxlength="6" inputmode="numeric"
+            autocomplete="off">
           <button id="btn-jc" class="btn btn-primary btn-xl">Join Room</button>
         </div>
       </div>
@@ -64,10 +79,14 @@
   <!-- ============ LOBBY ============ -->
   <section id="screen-lobby" class="screen">
     <div class="lobby-wrap">
-      <div class="lobby-head"><button id="btn-back" class="icon-btn">‹</button><h2>Game Lobby</h2><div></div></div>
+      <div class="lobby-head"><button id="btn-back" class="icon-btn">‹</button>
+        <h2>Game Lobby</h2>
+        <div></div>
+      </div>
       <div class="room-card">
         <span class="rc-label">ROOM CODE</span>
-        <div class="rc-row"><span id="lob-code" class="rc-code">------</span><button id="btn-copy" class="icon-btn">📋</button></div>
+        <div class="rc-row"><span id="lob-code" class="rc-code">------</span><button id="btn-copy"
+            class="icon-btn">📋</button></div>
         <span class="rc-hint">Share with friends</span>
       </div>
       <div id="players-grid" class="players-grid"></div>
@@ -81,7 +100,8 @@
       <div id="chat-panel" class="chat-panel hidden">
         <div class="chat-head"><span>Chat</span><button id="cp-close" class="modal-x">×</button></div>
         <div id="chat-msgs" class="chat-msgs"></div>
-        <div class="chat-bar"><input id="i-chat" class="field field-sm" placeholder="Message…" maxlength="200" autocomplete="off"><button id="btn-chat" class="btn btn-primary btn-sm">Send</button></div>
+        <div class="chat-bar"><input id="i-chat" class="field field-sm" placeholder="Message…" maxlength="200"
+            autocomplete="off"><button id="btn-chat" class="btn btn-primary btn-sm">Send</button></div>
       </div>
     </div>
   </section>
@@ -127,7 +147,8 @@
         <!-- Main actions row -->
         <div class="ap-main">
           <button id="a-see" class="ap-btn ap-see"><span class="ap-icon">👁</span>See</button>
-          <button id="a-call" class="ap-btn ap-call" disabled><span class="ap-icon">✓</span>Call <span class="ap-sub" id="call-val"></span></button>
+          <button id="a-call" class="ap-btn ap-call" disabled><span class="ap-icon">✓</span>Call <span class="ap-sub"
+              id="call-val"></span></button>
           <button id="a-fold" class="ap-btn ap-fold" disabled><span class="ap-icon">✕</span>Pack</button>
           <button id="a-show" class="ap-btn ap-show hidden" disabled><span class="ap-icon">🃏</span>Show</button>
         </div>
@@ -159,13 +180,18 @@
     <div id="m-addcoins" class="modal hidden">
       <div class="modal-overlay"></div>
       <div class="modal-card">
-        <div class="modal-head"><h3>🪙 Add Coins</h3><button class="modal-x" data-close="m-addcoins">×</button></div>
+        <div class="modal-head">
+          <h3>🪙 Add Coins</h3><button class="modal-x" data-close="m-addcoins">×</button>
+        </div>
         <div class="modal-body">
           <p class="add-coins-desc">Select amount to add to your balance</p>
           <div class="add-coins-btns">
-            <button class="coin-opt" data-coins="50"><span class="coin-amt">+50</span><span class="coin-icon">🪙</span></button>
-            <button class="coin-opt" data-coins="100"><span class="coin-amt">+100</span><span class="coin-icon">🪙</span></button>
-            <button class="coin-opt" data-coins="200"><span class="coin-amt">+200</span><span class="coin-icon">🪙</span></button>
+            <button class="coin-opt" data-coins="50"><span class="coin-amt">+50</span><span
+                class="coin-icon">🪙</span></button>
+            <button class="coin-opt" data-coins="100"><span class="coin-amt">+100</span><span
+                class="coin-icon">🪙</span></button>
+            <button class="coin-opt" data-coins="200"><span class="coin-amt">+200</span><span
+                class="coin-icon">🪙</span></button>
           </div>
         </div>
       </div>
@@ -180,14 +206,15 @@
       <div class="winner-banner">
         <div class="wb-glow"></div>
         <span class="wb-trophy">🏆</span>
-        <div class="wb-info"><span id="w-name" class="wb-name">Player</span><span class="wb-label">WINNER</span><span id="w-pot" class="wb-pot">+0</span></div>
+        <div class="wb-info"><span id="w-name" class="wb-name">Player</span><span class="wb-label">WINNER</span><span
+            id="w-pot" class="wb-pot">+0</span></div>
       </div>
       <div id="res-list" class="res-list"></div>
-      <!-- Countdown Timer -->
-      <div id="countdown-bar" class="countdown-bar">
-        <div class="cd-text">Next round in <span id="cd-seconds">4</span>s</div>
-        <div class="cd-progress"><div class="cd-fill" id="cd-fill"></div></div>
+      <!-- Host-controlled next round -->
+      <div id="host-controls" class="host-controls hidden">
+        <button id="btn-next-round" class="btn btn-primary btn-xl btn-next-round">▶ Start Next Round</button>
       </div>
+      <p id="wait-next-round" class="wait-next-round hidden">Waiting for host to start the next round…</p>
       <div class="res-actions">
         <button id="btn-end-game" class="btn btn-ghost btn-md">🏁 End Game</button>
         <button id="btn-leave" class="btn btn-ghost btn-md btn-leave-sm">Leave Room</button>
@@ -234,4 +261,5 @@
   <script src="js/socket.js"></script>
   <script src="js/app.js"></script>
 </body>
+
 </html>

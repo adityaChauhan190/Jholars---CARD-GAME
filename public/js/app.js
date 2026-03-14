@@ -3,17 +3,16 @@
  * Stake-based betting with flexible raise stepper
  * Features: Add Coins, Auto Round, Statistics, Game End Summary
  */
-;(function () {
+; (function () {
   'use strict';
 
   let room = null, myId = null, myName = '', isHost = false;
   let bootAmt = 10, isSeen = false, myHand = null, unread = 0;
   let lastState = null, raiseAmt = 20;
-  let countdownInterval = null, countdownValue = 20;
 
   const $ = s => document.querySelector(s);
   const $$ = s => document.querySelectorAll(s);
-  const COLORS = ['#f5c518','#1e88e5','#43a047','#e53935','#7c4dff','#ec407a','#ff9800'];
+  const COLORS = ['#f5c518', '#1e88e5', '#43a047', '#e53935', '#7c4dff', '#ec407a', '#ff9800'];
 
   const screens = { landing: $('#screen-landing'), lobby: $('#screen-lobby'), game: $('#screen-game'), results: $('#screen-results'), stats: $('#screen-stats') };
   function showScreen(n) { Object.values(screens).forEach(s => s.classList.remove('active')); screens[n].classList.add('active'); }
@@ -387,20 +386,41 @@
       list.appendChild(card);
     });
 
-    // Start countdown for next round
-    startCountdown();
+    // Show host controls or waiting message
+    const hostControls = $('#host-controls');
+    const waitMsg = $('#wait-next-round');
+    const resultHostId = data.hostId || (room && room.hostId);
+    if (myId === resultHostId) {
+      hostControls.classList.remove('hidden');
+      waitMsg.classList.add('hidden');
+    } else {
+      hostControls.classList.add('hidden');
+      waitMsg.classList.remove('hidden');
+    }
   }
+
+  // Start Next Round (host only)
+  $('#btn-next-round').onclick = async () => {
+    if (!room) return;
+    try {
+      $('#btn-next-round').disabled = true;
+      await GameSocket.startNextRound(room.code);
+    } catch (e) {
+      toast(e.message, 'error');
+    } finally {
+      $('#btn-next-round').disabled = false;
+    }
+  };
 
   // End Game
   $('#btn-end-game').onclick = async () => {
     if (!room) return;
     try {
-      stopCountdown();
       await GameSocket.endGame(room.code);
     } catch (e) { toast(e.message, 'error'); }
   };
 
-  $('#btn-leave').onclick = () => { stopCountdown(); GameSocket.leaveRoom(room.code); reset(); showScreen('landing'); };
+  $('#btn-leave').onclick = () => { GameSocket.leaveRoom(room.code); reset(); showScreen('landing'); };
 
   // ==== STATS SCREEN ====
   function showStatsScreen(summary) {
@@ -439,6 +459,8 @@
   GameSocket.on('player-joined', d => { if (room) { renderPlayers(d.players, room.hostId); if (d.newPlayer) toast(`${d.newPlayer} joined`, 'success'); Animations.soundJoin(); } });
   GameSocket.on('player-left', d => { if (room) { room.hostId = d.hostId; isHost = d.hostId === myId; renderPlayers(d.players, d.hostId); toast(`${d.leftPlayer} left`); } });
   GameSocket.on('game-state', st => {
+    // Track host from game-state
+    if (st.hostId && room) { room.hostId = st.hostId; isHost = st.hostId === myId; }
     if (screens.game.classList.contains('active')) {
       // Detect if someone else bet (pot increased, not my turn anymore)
       if (lastState && st.pot > lastState.pot && lastState.currentTurnId !== myId) {
@@ -456,18 +478,15 @@
   });
   GameSocket.on('results', d => showResults(d));
 
-  // Auto-round events
-  GameSocket.on('auto-round-started', d => {
-    stopCountdown();
+  // Next-round events (host-controlled)
+  GameSocket.on('next-round-started', d => {
     toast(`Round ${d.roundNumber} starting!`, 'info');
     myHand = null; isSeen = false; lastState = null; raiseAmt = 20;
     // enterGame() will be called when game-state arrives
   });
 
-  GameSocket.on('auto-round-cancelled', d => {
-    stopCountdown();
-    $('#countdown-bar').classList.add('hidden');
-    toast(d.reason || 'Auto round cancelled');
+  GameSocket.on('round-start-failed', d => {
+    toast(d.reason || 'Could not start round', 'error');
   });
 
   // Coins added notification
@@ -479,7 +498,6 @@
 
   // Game ended — show stats
   GameSocket.on('game-ended', d => {
-    stopCountdown();
     showStatsScreen(d.summary);
   });
 
@@ -492,7 +510,7 @@
   });
   GameSocket.on('kicked', () => { reset(); showScreen('landing'); toast('You were kicked', 'error'); });
 
-  function reset() { room = null; myHand = null; isHost = false; isSeen = false; unread = 0; lastState = null; raiseAmt = 20; stopCountdown(); $('#chat-msgs').innerHTML = ''; $('#i-cname').value = ''; $('#i-jname').value = ''; $('#i-jcode').value = ''; $('#chat-panel').classList.add('hidden'); $('#c-badge').classList.add('hidden'); }
+  function reset() { room = null; myHand = null; isHost = false; isSeen = false; unread = 0; lastState = null; raiseAmt = 20; $('#chat-msgs').innerHTML = ''; $('#i-cname').value = ''; $('#i-jname').value = ''; $('#i-jcode').value = ''; $('#chat-panel').classList.add('hidden'); $('#c-badge').classList.add('hidden'); }
   function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
   GameSocket.socket.on('connect', () => { myId = GameSocket.getId(); });
 })();

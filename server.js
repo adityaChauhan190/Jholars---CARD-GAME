@@ -19,7 +19,7 @@
  *   - Random tie-breaking for identical hands
  * 
  * FEATURES:
- *   - Auto round transition after 20 seconds
+ *   - Host-controlled next round (no auto-timer)
  *   - Per-player statistics tracking
  *   - Add coins support
  *   - Game-end leaderboard summary
@@ -71,32 +71,25 @@ function broadcastGameState(room) {
       isMyTurn: turnPlayer && turnPlayer.id === p.id && !p.isFolded,
       activePlayers: room.activePlayers.length,
       state: room.state,
-      roundNumber: room.roundNumber
+      roundNumber: room.roundNumber,
+      hostId: room.hostId
     });
   });
 }
 
 /**
- * Emit results and schedule auto-round after 20 seconds.
+ * Emit results (no auto-timer — host controls next round).
  */
-function emitResultsAndAutoRound(room, code, results) {
+function emitResults(room, code, results) {
+  // Include hostId so clients can show host controls
+  results.hostId = room.hostId;
   io.to(code).emit('results', results);
-
-  // Schedule auto round after 20 seconds
-  if (room.autoRoundTimer) clearTimeout(room.autoRoundTimer);
-  room.autoRoundTimer = setTimeout(() => {
-    room.autoRoundTimer = null;
-    // Only auto-start if room still exists and has >= 2 players
-    const r = getRoom(code);
-    if (!r || r.players.length < 2) return;
-    autoStartRound(r, code);
-  }, 20000);
 }
 
 /**
- * Auto-start a new round.
+ * Start a new round (called by host via start-next-round event).
  */
-function autoStartRound(room, code) {
+function startNextRound(room, code) {
   // Reset room state
   room.state = 'waiting';
   room.pot = 0;
@@ -118,9 +111,9 @@ function autoStartRound(room, code) {
   // Check all players have enough chips for boot
   const canPlay = room.players.filter(p => p.chips >= room.bootAmount);
   if (canPlay.length < 2) {
-    io.to(code).emit('auto-round-cancelled', { reason: 'Not enough players with sufficient coins' });
+    io.to(code).emit('round-start-failed', { reason: 'Not enough players with sufficient coins' });
     io.to(code).emit('room-reset', { players: sanitizePlayers(room.players), hostId: room.hostId });
-    return;
+    return false;
   }
 
   // Deal & start
@@ -143,9 +136,10 @@ function autoStartRound(room, code) {
   room.activePlayers = shuffle(room.activePlayers);
   // Random starting player
   room.currentTurnIndex = crypto.randomInt(0, room.activePlayers.length);
-  
-  io.to(code).emit('auto-round-started', { roundNumber: room.roundNumber });
+
+  io.to(code).emit('next-round-started', { roundNumber: room.roundNumber });
   broadcastGameState(room);
+  return true;
 }
 
 function checkAutoWin(room) {
@@ -170,7 +164,7 @@ function checkAutoWin(room) {
         roundNumber: room.roundNumber
       };
 
-      emitResultsAndAutoRound(room, room.code, results);
+      emitResults(room, room.code, results);
     }
     return true;
   }
@@ -332,7 +326,7 @@ io.on('connection', (socket) => {
       roundNumber: room.roundNumber
     };
 
-    emitResultsAndAutoRound(room, code, results);
+    emitResults(room, code, results);
     cb({ success: true });
   });
 
@@ -341,6 +335,17 @@ io.on('connection', (socket) => {
     if (!room) return cb({ success: false, error: 'Room not found' });
     io.to(code).emit('room-reset', { players: sanitizePlayers(room.players), hostId: room.hostId });
     cb({ success: true });
+  });
+
+  // START NEXT ROUND — host only
+  socket.on('start-next-round', (code, cb) => {
+    const room = getRoom(code);
+    if (!room) return cb({ success: false, error: 'Room not found' });
+    if (room.hostId !== socket.id) return cb({ success: false, error: 'Only the host can start the next round' });
+    if (room.players.length < 2) return cb({ success: false, error: 'Need at least 2 players' });
+
+    const started = startNextRound(room, code);
+    cb({ success: started, error: started ? undefined : 'Could not start round' });
   });
 
   // ADD COINS
@@ -367,28 +372,10 @@ io.on('connection', (socket) => {
     } catch (e) { cb({ success: false, error: e.message }); }
   });
 
-  // CANCEL AUTO ROUND (host only)
-  socket.on('cancel-auto-round', (code, cb) => {
-    const room = getRoom(code);
-    if (!room) return cb({ success: false, error: 'Room not found' });
-    if (room.autoRoundTimer) {
-      clearTimeout(room.autoRoundTimer);
-      room.autoRoundTimer = null;
-    }
-    io.to(code).emit('auto-round-cancelled', { reason: 'Host cancelled' });
-    cb({ success: true });
-  });
-
   // END GAME — show final leaderboard
   socket.on('end-game', (code, cb) => {
     const room = getRoom(code);
     if (!room) return cb({ success: false, error: 'Room not found' });
-
-    // Clear any pending auto-round
-    if (room.autoRoundTimer) {
-      clearTimeout(room.autoRoundTimer);
-      room.autoRoundTimer = null;
-    }
 
     const summary = getGameSummary(room);
     io.to(code).emit('game-ended', { summary, roomCode: code });

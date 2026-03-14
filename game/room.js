@@ -32,8 +32,7 @@ function createRoom(hostId, hostName, bootAmount = MIN_BET) {
     ],
     activePlayers: [], // ids of players still in the round
     chat: [],
-    roundNumber: 0,
-    autoRoundTimer: null // timer for auto-starting next round
+    roundNumber: 0
   };
   rooms.set(code, room);
   return room;
@@ -78,7 +77,6 @@ function leaveRoom(code, playerId) {
   room.activePlayers = room.activePlayers.filter(id => id !== playerId);
 
   if (room.players.length === 0) {
-    if (room.autoRoundTimer) clearTimeout(room.autoRoundTimer);
     rooms.delete(code);
     return null;
   }
@@ -106,12 +104,6 @@ function getRoomByPlayerId(playerId) {
 function resetRoom(code) {
   const room = rooms.get(code);
   if (!room) return null;
-
-  // Clear any auto-round timer
-  if (room.autoRoundTimer) {
-    clearTimeout(room.autoRoundTimer);
-    room.autoRoundTimer = null;
-  }
 
   room.state = 'waiting';
   room.pot = 0;
@@ -158,7 +150,7 @@ function addCoins(code, playerId, amount) {
   if (!room) throw new Error('Room not found');
   const player = room.players.find(p => p.id === playerId);
   if (!player) throw new Error('Player not found');
-  
+
   const validAmounts = [50, 100, 200];
   if (!validAmounts.includes(amount)) throw new Error('Invalid amount');
 
@@ -184,8 +176,6 @@ function getGameSummary(room) {
 }
 
 function deleteRoom(code) {
-  const room = rooms.get(code);
-  if (room && room.autoRoundTimer) clearTimeout(room.autoRoundTimer);
   rooms.delete(code);
 }
 
